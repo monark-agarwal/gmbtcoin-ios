@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "GLMT Wallet",
+    "slug": "gmbt-coin-wallet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#4E5BD5"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.monarkagarwal.gmbtcoinwallet",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#4E5BD5"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.monarkagarwal.gmbtcoinwallet",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-camera",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a32303ac-9353-46b9-8735-d86a43643062"
+      }
+    }
+  }
+}
