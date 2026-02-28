@@ -9,6 +9,7 @@ import MainWallet from '../screens/MainWallet';
 import CoinSend from '../screens/CoinSend';
 import Setting from '../screens/Setting';
 import QRScanner from '../screens/QRScanner';
+import WalletDetail from '../screens/WalletDetail';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +25,7 @@ export default function AppNavigator() {
       <Stack.Screen name="Setting" component={Setting} />
       <Stack.Screen name="CoinSend" component={CoinSend} />
       <Stack.Screen name="QRScanner" component={QRScanner} />
+      <Stack.Screen name="WalletDetail" component={WalletDetail} />
     </Stack.Navigator>
   );
 }

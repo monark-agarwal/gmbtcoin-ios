@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createWallet } from '../storage/walletStorage';
 import {
   View,
   Text,
@@ -44,7 +45,6 @@ console.log(GMBTModule);
     const mnemonic = await GMBTModule.newWordSeed();
     setSeed(mnemonic);
     setConfirmSeed(mnemonic);
-alert(await GMBTModule.getAddresses(seed,1));
   } catch (e) {
     Alert.alert('Error', 'Failed to generate seed');
   }
@@ -82,10 +82,27 @@ alert(await GMBTModule.getAddresses(seed,1));
     return true;
   };
 
-  const handleCreate = () => {
-    if (!validate()) return;
-    navigation.replace('MainWallet');
-  };
+const handleCreate = async () => {
+  if (!validate()) return;
+
+  const walletId = Date.now().toString();
+
+  const addressList = await GMBTModule.getAddresses(seed, 5);
+
+  const parsedAddresses = JSON.parse(addressList).map((addr, index) => ({
+    index,
+    address: addr
+  }));
+
+  await createWallet({
+    walletId,
+    walletName: name,
+    seedValue: seed,
+    addresses: parsedAddresses
+  });
+console.log(addressList);
+  navigation.replace('MainWallet');
+};
 
   const copySeed = async () => {
     await Clipboard.setStringAsync(seed);

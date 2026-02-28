@@ -3,31 +3,40 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   FlatList,
+  TouchableOpacity,
   Modal,
+  SafeAreaView,
+  StatusBar,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
-import { SafeAreaView } from "react-native-safe-area-context";
+import * as Clipboard from "expo-clipboard";
 
-export default function WalletDetails({ navigation }) {
-  const [qrVisible, setQrVisible] = useState(false);
-  const [selectedAddress, setSelectedAddress] = useState("");
+export default function WalletDetails({ route, navigation }) {
+  const { wallet } = route.params;
+  const [selectedAddress, setSelectedAddress] = useState(null);
 
-  const addresses = [
-    { id: "0", address: "gooMr2E5JwXFJgVtY9idxNF6gqQc1bQCy1", hours: 0, glmt: 0.0 },
-    { id: "1", address: "2AuqqqwertyFhrhGb", hours: 0, glmt: 0.0 },
-  ];
+  const addresses = wallet.addresses || [];
 
-  const openQR = (address) => {
-    setSelectedAddress(address);
-    setQrVisible(true);
+  const totalBalance = 0.0;
+  const totalHours = 0;
+
+  const openQR = (address) => setSelectedAddress(address);
+  const closeQR = () => setSelectedAddress(null);
+
+  const copyAddress = async (address) => {
+    await Clipboard.setStringAsync(address);
   };
+
+  const truncateAddress = (addr, start = 6, end = 6) =>
+    addr ? `${addr.slice(0, start)}...${addr.slice(-end)}` : "";
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
       {/* HEADER */}
       <LinearGradient
         colors={["#6A5AE0", "#4E5BD5"]}
@@ -38,83 +47,98 @@ export default function WalletDetails({ navigation }) {
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
 
-          <Text style={styles.title}>mai</Text>
+          <Text style={styles.title}>{wallet.name}</Text>
 
-          <TouchableOpacity>
-            <Ionicons name="ellipsis-vertical" size={24} color="#fff" />
-          </TouchableOpacity>
+          <Ionicons name="ellipsis-vertical" size={22} color="#fff" />
         </View>
 
         <View style={styles.balanceContainer}>
-          <Text style={styles.balance}>0.0</Text>
+          <Text style={styles.balance}>{totalBalance.toFixed(1)}</Text>
           <Text style={styles.currency}> GLMT</Text>
         </View>
 
         <View style={styles.hoursPill}>
-          <Text style={styles.hoursText}>0 GLMT Hours</Text>
+          <Text style={styles.hoursText}>{totalHours} GLMT Hours</Text>
         </View>
       </LinearGradient>
 
       {/* TABLE HEADER */}
       <View style={styles.tableHeader}>
-        <Text style={styles.headerText}>Id</Text>
-        <Text style={styles.headerText}>Address</Text>
-        <Text style={styles.headerText}>Hours</Text>
-        <Text style={styles.headerText}>GLMT</Text>
+        <Text style={{ flex: 3, fontWeight: "600" }}>Address</Text>
+        <Text style={{ flex: 1, fontWeight: "600", textAlign: "center" }}>
+          Hours
+        </Text>
+        <Text style={{ flex: 1, fontWeight: "600", textAlign: "center" }}>
+          GLMT
+        </Text>
+        <Text style={{ width: 50, textAlign: "center" }}>Actions</Text>
       </View>
 
       {/* ADDRESS LIST */}
       <FlatList
         data={addresses}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <Text style={styles.cell}>{item.id}</Text>
+        keyExtractor={(item, index) => index.toString()}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        renderItem={({ item, index }) => {
+          const addr = item.address.Address;
+          return (
+            <View style={styles.addressCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addressText}>
+                  {truncateAddress(addr)}
+                </Text>
+              </View>
 
-            <View style={styles.addressCell}>
-              <TouchableOpacity onPress={() => openQR(item.address)}>
-                <Ionicons name="qr-code-outline" size={20} color="#333" />
-              </TouchableOpacity>
+              <View style={styles.middleInfo}>
+                <Text>0.0</Text>
+              </View>
 
-              <Text style={styles.addressText}>
-                {item.address.substring(0, 6)}...
-                {item.address.slice(-6)}
-              </Text>
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => copyAddress(addr)}
+                >
+                  <Ionicons name="copy-outline" size={20} color="#6A5AE0" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => openQR(addr)}
+                >
+                  <Ionicons name="qr-code-outline" size={22} color="#6A5AE0" />
+                </TouchableOpacity>
+              </View>
             </View>
-
-            <Text style={styles.cell}>{item.hours}</Text>
-            <Text style={styles.cell}>{item.glmt}</Text>
-          </View>
-        )}
+          );
+        }}
       />
 
-      {/* QR POPUP MODAL */}
-      <Modal visible={qrVisible} transparent animationType="fade">
+      {/* QR MODAL */}
+      <Modal visible={!!selectedAddress} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>View QR Code</Text>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Wallet QR Code</Text>
 
-            <QRCode value={selectedAddress} size={200} />
+            {selectedAddress && (
+              <>
+                <QRCode value={selectedAddress} size={200} />
 
-            <View style={styles.addressRow}>
-              <Text style={styles.fullAddress}>{selectedAddress}</Text>
+                <View style={styles.addressBox}>
+                  <Text numberOfLines={1} style={{ flex: 1 }}>
+                    {selectedAddress}
+                  </Text>
 
-              <TouchableOpacity
-                onPress={() => {
-                  navigator.clipboard.writeText(selectedAddress);
-                }}
-              >
-                <Ionicons name="copy-outline" size={22} color="#6A5AE0" />
-              </TouchableOpacity>
-            </View>
+                  <TouchableOpacity onPress={() => copyAddress(selectedAddress)}>
+                    <Ionicons name="copy-outline" size={22} />
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
 
             <TouchableOpacity
+              onPress={closeQR}
               style={styles.closeBtn}
-              onPress={() => setQrVisible(false)}
             >
-              <Text style={{ color: "#fff", fontWeight: "600" }}>
-                Close
-              </Text>
+              <Text style={{ color: "#fff", fontWeight: "600" }}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -122,15 +146,14 @@ export default function WalletDetails({ navigation }) {
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F6FA",
-  },
+  container: { flex: 1, backgroundColor: "#F4F5F9" },
 
   header: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
@@ -150,11 +173,12 @@ const styles = StyleSheet.create({
   balanceContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 30,
+    alignItems: "flex-end",
+    marginTop: 20,
   },
 
   balance: {
-    fontSize: 40,
+    fontSize: 38,
     color: "#fff",
     fontWeight: "700",
   },
@@ -162,7 +186,7 @@ const styles = StyleSheet.create({
   currency: {
     fontSize: 18,
     color: "#fff",
-    marginTop: 15,
+    marginLeft: 6,
   },
 
   hoursPill: {
@@ -180,42 +204,47 @@ const styles = StyleSheet.create({
 
   tableHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 15,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     backgroundColor: "#ECECF3",
+    alignItems: "center",
   },
 
-  headerText: {
-    flex: 1,
-    textAlign: "center",
-    fontWeight: "600",
-  },
-
-  row: {
+  addressCard: {
     flexDirection: "row",
-    padding: 15,
     backgroundColor: "#fff",
-    marginVertical: 5,
-    marginHorizontal: 10,
+    marginHorizontal: 15,
+    marginVertical: 6,
+    padding: 12,
     borderRadius: 12,
     alignItems: "center",
-  },
-
-  cell: {
-    flex: 1,
-    textAlign: "center",
-  },
-
-  addressCell: {
-    flex: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 5,
+    elevation: 2,
   },
 
   addressText: {
-    fontSize: 12,
-    color: "#555",
+    fontSize: 14,
+    color: "#333",
+  },
+
+  middleInfo: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  actions: {
+    width: 70,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
+  iconBtn: {
+    padding: 6,
   },
 
   modalOverlay: {
@@ -225,39 +254,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  modalBox: {
+  modalCard: {
     width: "85%",
     backgroundColor: "#fff",
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 20,
     alignItems: "center",
   },
 
   modalTitle: {
     fontSize: 18,
-    fontWeight: "600",
     marginBottom: 20,
+    fontWeight: "600",
   },
 
-  addressRow: {
+  addressBox: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 20,
-    justifyContent: "space-between",
+    backgroundColor: "#F2F2F2",
+    padding: 10,
+    borderRadius: 10,
     width: "100%",
-  },
-
-  fullAddress: {
-    flex: 1,
-    fontSize: 12,
-    color: "#333",
   },
 
   closeBtn: {
     marginTop: 20,
     backgroundColor: "#6A5AE0",
-    paddingVertical: 10,
     paddingHorizontal: 30,
+    paddingVertical: 10,
     borderRadius: 20,
   },
 });

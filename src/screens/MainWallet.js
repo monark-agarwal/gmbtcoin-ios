@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,26 +6,50 @@ import {
   FlatList,
   TouchableOpacity,
   SafeAreaView,
+  StatusBar,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { getWallets } from "../storage/walletStorage"; // adjust path if needed
 
 export default function MainWallet() {
   const navigation = useNavigation();
+  const [wallets, setWallets] = useState([]);
 
-  const wallets = [
-    { id: "1", name: "monark", hours: 0, glmt: 0.0 },
-    { id: "2", name: "skycoin", hours: 2, glmt: 10.5 },
-    { id: "3", name: "backup", hours: 1, glmt: 5.2 },
-  ];
+  useEffect(() => {
+    loadWallets();
+  }, []);
+
+  const loadWallets = async () => {
+    const storedWallets = await getWallets();
+
+    if (!storedWallets) {
+      setWallets([]);
+      return;
+    }
+
+    const formattedWallets = storedWallets.map((w) => ({
+      id: w.walletId,
+      name: w.walletName,
+      hours: 0,
+      glmt: 0.0,
+      addresses: w.addresses || [],
+    }));
+
+    setWallets(formattedWallets);
+console.log(wallets);
+  };
 
   const totalBalance = wallets.reduce((sum, w) => sum + w.glmt, 0);
   const totalHours = wallets.reduce((sum, w) => sum + w.hours, 0);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* HEADER GRADIENT (Matched to Screenshot Purple) */}
+      <StatusBar barStyle="light-content" />
+
+      {/* HEADER */}
       <LinearGradient
         colors={["#6A5AE0", "#5B4BDB", "#4E5BD5"]}
         start={{ x: 0, y: 0 }}
@@ -47,11 +71,13 @@ export default function MainWallet() {
 
         {/* Balance */}
         <View style={styles.balanceContainer}>
-          <Text style={styles.balance}>{totalBalance}</Text>
+          <Text style={styles.balance}>
+            {totalBalance.toFixed(2)}
+          </Text>
           <Text style={styles.currency}> GLMT</Text>
         </View>
 
-        {/* Hours Pill */}
+        {/* Hours */}
         <View style={styles.hoursPill}>
           <Text style={styles.hoursText}>
             {totalHours} GLMT Hours
@@ -59,40 +85,53 @@ export default function MainWallet() {
         </View>
       </LinearGradient>
 
-      {/* Wallet Table Header */}
+      {/* TABLE HEADER */}
       <View style={styles.tableHeader}>
         <Text style={styles.tableHeaderText}>Wallet</Text>
         <Text style={styles.tableHeaderText}>Hours</Text>
         <Text style={styles.tableHeaderText}>GLMT</Text>
       </View>
 
-      {/* Wallet List (Clickable Rows) */}
-      <FlatList
-        data={wallets}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.walletRow}
-            onPress={() =>
-              navigation.navigate("WalletDetails", { wallet: item })
-            }
-          >
-            <Text style={styles.walletName}>{item.name}</Text>
-            <Text style={styles.walletValue}>{item.hours}</Text>
-            <View style={styles.walletRight}>
-              <Text style={styles.walletValue}>{item.glmt}</Text>
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color="#999"
-                style={{ marginLeft: 5 }}
-              />
-            </View>
-          </TouchableOpacity>
-        )}
-      />
+{/* WALLET LIST */}
+<View style={{ flex: 1 }}>
+  <FlatList
+    data={wallets}
+    keyExtractor={(item) => item.id}
+    contentContainerStyle={{ paddingBottom: 120 }}
+    renderItem={({ item }) => (
+      <TouchableOpacity
+        style={styles.walletRow}
+        onPress={() =>
+          navigation.navigate("WalletDetail", { wallet: item })
+        }
+      >
+        <Text style={styles.walletName}>{item.name}</Text>
+        <Text style={styles.walletValue}>{item.hours}</Text>
 
-      {/* Bottom Action Buttons */}
+        <View style={styles.walletRight}>
+          <Text style={styles.walletValue}>
+            {item.glmt.toFixed(2)}
+          </Text>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color="#999"
+            style={{ marginLeft: 5 }}
+          />
+        </View>
+      </TouchableOpacity>
+    )}
+    ListEmptyComponent={
+      <View style={{ alignItems: "center", marginTop: 40 }}>
+        <Text style={{ color: "#888" }}>
+          No wallets found
+        </Text>
+      </View>
+    }
+  />
+</View>
+
+      {/* BOTTOM ACTIONS */}
       <View style={styles.bottomActions}>
         <TouchableOpacity onPress={() => navigation.navigate("Receive")}>
           <Ionicons name="wallet-outline" size={30} color="#333" />
@@ -117,6 +156,7 @@ export default function MainWallet() {
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -124,7 +164,10 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    paddingTop: 20,
+    paddingTop:
+      Platform.OS === "android"
+        ? StatusBar.currentHeight + 20
+        : 20,
     paddingBottom: 40,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
