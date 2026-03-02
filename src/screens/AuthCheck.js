@@ -8,7 +8,7 @@ export default function AuthCheck({ navigation }) {
       const storedPin = await getPin();
 
       if (storedPin) {
-        navigation.replace('CreatePin');
+        navigation.replace('EnterPin');
       } else {
         navigation.replace('CreatePin');
       }

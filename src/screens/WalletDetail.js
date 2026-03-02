@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -8,30 +8,111 @@ import {
   Modal,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Platform,
+  Dimensions,
+  RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import * as Clipboard from "expo-clipboard";
+import Svg, { Path } from "react-native-svg";
+import { getWalletBalance } from "../api/walletApi";
+
+const { width } = Dimensions.get("window");
 
 export default function WalletDetails({ route, navigation }) {
   const { wallet } = route.params;
+
+  const [addresses, setAddresses] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
 
-  const addresses = wallet.addresses || [];
+  const animatedTotal = useRef(new Animated.Value(0)).current;
+  const waveAnim = useRef(new Animated.Value(0)).current;
 
-  const totalBalance = 0.0;
-  const totalHours = 0;
+  const [totalBalance, setTotalBalance] = useState(0);
+  const [totalHours, setTotalHours] = useState(0);
+  const [animatedBalance, setAnimatedBalance] = useState(0);
 
-  const openQR = (address) => setSelectedAddress(address);
-  const closeQR = () => setSelectedAddress(null);
+  useEffect(() => {
+    loadBalances();
+  }, []);
+
+  /* Wave Animation */
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(waveAnim, {
+        toValue: 1,
+        duration: 5000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, []);
+
+  const waveTranslate = waveAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -60],
+  });
+
+  const loadBalances = async () => {
+    try {
+      setLoading(true);
+
+      const updatedAddresses = await Promise.all(
+        wallet.addresses.map(async (item) => {
+          const addr = item.address.Address;
+          const balance = await getWalletBalance([addr]);
+
+          return {
+            ...item,
+            coins: balance?.coins || 0,
+            hours: balance?.hours || 0,
+          };
+        })
+      );
+
+      const totalCoins = updatedAddresses.reduce(
+        (sum, a) => sum + a.coins,
+        0
+      );
+
+      const totalHrs = updatedAddresses.reduce(
+        (sum, a) => sum + a.hours,
+        0
+      );
+
+      setAddresses(updatedAddresses);
+      setTotalBalance(totalCoins);
+      setTotalHours(totalHrs);
+
+      Animated.timing(animatedTotal, {
+        toValue: totalCoins,
+        duration: 1200,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: false,
+      }).start();
+
+      animatedTotal.addListener((v) => {
+        setAnimatedBalance(v.value);
+      });
+    } catch (error) {
+      console.log("Detail error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const truncate = (addr) =>
+    `${addr.slice(0, 6)}...${addr.slice(-6)}`;
 
   const copyAddress = async (address) => {
     await Clipboard.setStringAsync(address);
   };
-
-  const truncateAddress = (addr, start = 6, end = 6) =>
-    addr ? `${addr.slice(0, start)}...${addr.slice(-end)}` : "";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -39,9 +120,27 @@ export default function WalletDetails({ route, navigation }) {
 
       {/* HEADER */}
       <LinearGradient
-        colors={["#6A5AE0", "#4E5BD5"]}
+        colors={["#6A5AE0", "#5B4BDB", "#4E5BD5"]}
         style={styles.header}
       >
+        {/* Wave */}
+        <Animated.View
+          style={[
+            styles.waveContainer,
+            { transform: [{ translateX: waveTranslate }] },
+          ]}
+        >
+          <Svg height="140" width={width + 60}>
+            <Path
+              d={`M0 80 Q ${width / 2} 140 ${width} 80 T ${
+                width + 60
+              } 80 L ${width + 60} 140 L 0 140 Z`}
+              fill="rgba(255,255,255,0.08)"
+            />
+          </Svg>
+        </Animated.View>
+
+        {/* TOP BAR (Title centered like main screen) */}
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -49,74 +148,105 @@ export default function WalletDetails({ route, navigation }) {
 
           <Text style={styles.title}>{wallet.name}</Text>
 
-          <Ionicons name="ellipsis-vertical" size={22} color="#fff" />
+          <TouchableOpacity onPress={loadBalances}>
+            <Ionicons name="refresh-outline" size={22} color="#fff" />
+          </TouchableOpacity>
         </View>
 
+        {/* BALANCE */}
         <View style={styles.balanceContainer}>
-          <Text style={styles.balance}>{totalBalance.toFixed(1)}</Text>
-          <Text style={styles.currency}> GLMT</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.balance}>
+                {animatedBalance.toFixed(6)}
+              </Text>
+              <Text style={styles.currency}>GLMT</Text>
+            </>
+          )}
         </View>
 
         <View style={styles.hoursPill}>
-          <Text style={styles.hoursText}>{totalHours} GLMT Hours</Text>
+          <Text style={styles.hoursText}>
+            {totalHours} GLMT Hours
+          </Text>
         </View>
       </LinearGradient>
-
-      {/* TABLE HEADER */}
-      <View style={styles.tableHeader}>
-        <Text style={{ flex: 3, fontWeight: "600" }}>Address</Text>
-        <Text style={{ flex: 1, fontWeight: "600", textAlign: "center" }}>
-          Hours
-        </Text>
-        <Text style={{ flex: 1, fontWeight: "600", textAlign: "center" }}>
-          GLMT
-        </Text>
-        <Text style={{ width: 50, textAlign: "center" }}>Actions</Text>
-      </View>
 
       {/* ADDRESS LIST */}
       <FlatList
         data={addresses}
         keyExtractor={(item, index) => index.toString()}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        renderItem={({ item, index }) => {
-          const addr = item.address.Address;
-          return (
-            <View style={styles.addressCard}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.addressText}>
-                  {truncateAddress(addr)}
-                </Text>
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={loadBalances}
+          />
+        }
+        contentContainerStyle={{ paddingBottom: 30 }}
+        renderItem={({ item }) => (
+          <View style={styles.addressCard}>
+            <View style={styles.left}>
+              <View style={styles.iconBox}>
+                <Ionicons
+                  name="key-outline"
+                  size={18}
+                  color="#5B4BDB"
+                />
               </View>
 
-              <View style={styles.middleInfo}>
-                <Text>0.0</Text>
+              <View>
+                <Text style={styles.addressText}>
+                  {truncate(item.address.Address)}
+                </Text>
+                <Text style={styles.subText}>
+                  {item.hours} Hours
+                </Text>
               </View>
+            </View>
+
+            <View style={styles.right}>
+              <Text style={styles.coinText}>
+                {item.coins.toFixed(6)}
+              </Text>
 
               <View style={styles.actions}>
                 <TouchableOpacity
-                  style={styles.iconBtn}
-                  onPress={() => copyAddress(addr)}
+                  onPress={() =>
+                    copyAddress(item.address.Address)
+                  }
                 >
-                  <Ionicons name="copy-outline" size={20} color="#6A5AE0" />
+                  <Ionicons
+                    name="copy-outline"
+                    size={20}
+                    color="#5B4BDB"
+                  />
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  style={styles.iconBtn}
-                  onPress={() => openQR(addr)}
+                  onPress={() =>
+                    setSelectedAddress(item.address.Address)
+                  }
+                  style={{ marginLeft: 12 }}
                 >
-                  <Ionicons name="qr-code-outline" size={22} color="#6A5AE0" />
+                  <Ionicons
+                    name="qr-code-outline"
+                    size={22}
+                    color="#5B4BDB"
+                  />
                 </TouchableOpacity>
               </View>
             </View>
-          );
-        }}
+          </View>
+        )}
       />
 
-      {/* QR MODAL */}
+      {/* QR POPUP */}
       <Modal visible={!!selectedAddress} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Wallet QR Code</Text>
+            <Text style={styles.modalTitle}>Receive GLMT</Text>
 
             {selectedAddress && (
               <>
@@ -127,7 +257,11 @@ export default function WalletDetails({ route, navigation }) {
                     {selectedAddress}
                   </Text>
 
-                  <TouchableOpacity onPress={() => copyAddress(selectedAddress)}>
+                  <TouchableOpacity
+                    onPress={() =>
+                      copyAddress(selectedAddress)
+                    }
+                  >
                     <Ionicons name="copy-outline" size={22} />
                   </TouchableOpacity>
                 </View>
@@ -135,10 +269,10 @@ export default function WalletDetails({ route, navigation }) {
             )}
 
             <TouchableOpacity
-              onPress={closeQR}
+              onPress={() => setSelectedAddress(null)}
               style={styles.closeBtn}
             >
-              <Text style={{ color: "#fff", fontWeight: "600" }}>Close</Text>
+              <Text style={styles.closeText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -148,14 +282,23 @@ export default function WalletDetails({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F5F9" },
+  container: { flex: 1, backgroundColor: "#F5F6FA" },
 
   header: {
-    paddingTop: 20,
+    paddingTop:
+      Platform.OS === "android"
+        ? StatusBar.currentHeight + 20
+        : 20,
+    paddingBottom: 60,
     paddingHorizontal: 20,
-    paddingBottom: 30,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+    overflow: "hidden",
+  },
+
+  waveContainer: {
+    position: "absolute",
+    bottom: -20,
   },
 
   topBar: {
@@ -171,80 +314,86 @@ const styles = StyleSheet.create({
   },
 
   balanceContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "flex-end",
-    marginTop: 20,
+    alignItems: "center",
+    marginTop: 35,
   },
 
   balance: {
-    fontSize: 38,
+    fontSize: 36,
     color: "#fff",
     fontWeight: "700",
   },
 
   currency: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#fff",
-    marginLeft: 6,
+    marginTop: 5,
   },
 
   hoursPill: {
     alignSelf: "center",
-    marginTop: 10,
+    marginTop: 15,
     backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 15,
-    paddingVertical: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
     borderRadius: 20,
   },
 
-  hoursText: {
-    color: "#fff",
-  },
-
-  tableHeader: {
-    flexDirection: "row",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    backgroundColor: "#ECECF3",
-    alignItems: "center",
-  },
+  hoursText: { color: "#fff" },
 
   addressCard: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    marginHorizontal: 15,
-    marginVertical: 6,
-    padding: 12,
-    borderRadius: 12,
+    justifyContent: "space-between",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 5,
-    elevation: 2,
+    backgroundColor: "#F2F3F7",
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E4E6EF",
+  },
+
+  left: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#E9E8FD",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
 
   addressText: {
     fontSize: 14,
-    color: "#333",
+    fontWeight: "600",
+    color: "#1E1E2D",
   },
 
-  middleInfo: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+  subText: {
+    fontSize: 12,
+    color: "#8F90A6",
+    marginTop: 4,
+  },
+
+  right: {
+    alignItems: "flex-end",
+  },
+
+  coinText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#2C2C3A",
   },
 
   actions: {
-    width: 70,
     flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
-  iconBtn: {
-    padding: 6,
+    marginTop: 6,
   },
 
   modalOverlay: {
@@ -257,32 +406,37 @@ const styles = StyleSheet.create({
   modalCard: {
     width: "85%",
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
+    padding: 24,
     alignItems: "center",
   },
 
   modalTitle: {
     fontSize: 18,
-    marginBottom: 20,
     fontWeight: "600",
+    marginBottom: 20,
   },
 
   addressBox: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 20,
-    backgroundColor: "#F2F2F2",
+    backgroundColor: "#F2F3F7",
     padding: 10,
     borderRadius: 10,
     width: "100%",
   },
 
   closeBtn: {
-    marginTop: 20,
+    marginTop: 25,
     backgroundColor: "#6A5AE0",
     paddingHorizontal: 30,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 25,
+  },
+
+  closeText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });

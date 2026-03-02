@@ -37,9 +37,13 @@ export default function QRScanner() {
             ? undefined
             : ({ data }) => {
                 setScanned(true);
-                navigation.navigate("CoinSend", {
-                  scannedAddress: data,
+
+                navigation.navigate({
+                  name: "CoinSend",
+                  params: { scannedAddress: data },
+                  merge: true, // ? THIS FIXES YOUR PROBLEM
                 });
+navigation.goBack();
               }
         }
       />

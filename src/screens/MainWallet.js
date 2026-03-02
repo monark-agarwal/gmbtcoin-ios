@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -8,42 +8,105 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ActivityIndicator,
+  Dimensions,
+  Animated,
+  Easing,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { getWallets } from "../storage/walletStorage"; // adjust path if needed
+import Svg, { Path } from "react-native-svg";
+import WalletModal from "./WalletModal";
+import { getWallets } from "../storage/walletStorage";
+import { getWalletBalance } from "../api/walletApi";
+
+const { width } = Dimensions.get("window");
 
 export default function MainWallet() {
   const navigation = useNavigation();
+
   const [wallets, setWallets] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showBalance, setShowBalance] = useState(true);
+
+  const animatedValue = useRef(new Animated.Value(0)).current;
+  const waveAnim = useRef(new Animated.Value(0)).current;
+  const [animatedBalance, setAnimatedBalance] = useState(0);
 
   useEffect(() => {
     loadWallets();
   }, []);
 
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(waveAnim, {
+        toValue: 1,
+        duration: 4000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, []);
+
+  const waveTranslate = waveAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -50],
+  });
+
   const loadWallets = async () => {
-    const storedWallets = await getWallets();
+    try {
+      setLoading(true);
+      const storedWallets = await getWallets();
 
-    if (!storedWallets) {
-      setWallets([]);
-      return;
+      if (!storedWallets || storedWallets.length === 0) {
+        setWallets([]);
+        return;
+      }
+
+      const updatedWallets = await Promise.all(
+        storedWallets.map(async (wallet) => {
+          const addressList =
+            wallet.addresses?.map((a) => a.address.Address) || [];
+
+          const balance = await getWalletBalance(addressList);
+
+          return {
+            id: wallet.walletId,
+            name: wallet.walletName,
+            hours: balance?.hours || 0,
+            glmt: balance?.coins || 0,
+            addresses: wallet.addresses || [],
+          };
+        })
+      );
+
+      setWallets(updatedWallets);
+    } catch (error) {
+      console.log("Wallet load error:", error);
+    } finally {
+      setLoading(false);
     }
-
-    const formattedWallets = storedWallets.map((w) => ({
-      id: w.walletId,
-      name: w.walletName,
-      hours: 0,
-      glmt: 0.0,
-      addresses: w.addresses || [],
-    }));
-
-    setWallets(formattedWallets);
-console.log(wallets);
   };
 
   const totalBalance = wallets.reduce((sum, w) => sum + w.glmt, 0);
   const totalHours = wallets.reduce((sum, w) => sum + w.hours, 0);
+const [walletModalVisible, setWalletModalVisible] = useState(false);
+const [walletMode, setWalletMode] = useState("new");
+
+  useEffect(() => {
+    Animated.timing(animatedValue, {
+      toValue: totalBalance,
+      duration: 1000,
+      useNativeDriver: false,
+    }).start();
+
+    const listener = animatedValue.addListener((v) => {
+      setAnimatedBalance(v.value);
+    });
+
+    return () => animatedValue.removeListener(listener);
+  }, [totalBalance]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -52,32 +115,65 @@ console.log(wallets);
       {/* HEADER */}
       <LinearGradient
         colors={["#6A5AE0", "#5B4BDB", "#4E5BD5"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
         style={styles.header}
       >
-        {/* Top Bar */}
+        <Animated.View
+          style={[
+            styles.waveContainer,
+            { transform: [{ translateX: waveTranslate }] },
+          ]}
+        >
+          <Svg height="120" width={width + 50}>
+            <Path
+              d={`M0 70 Q ${width / 2} 120 ${width} 70 T ${
+                width + 50
+              } 70 L ${width + 50} 120 L 0 120 Z`}
+              fill="rgba(255,255,255,0.08)"
+            />
+          </Svg>
+        </Animated.View>
+
+        {/* TOP BAR */}
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.navigate("Setting")}>
-            <Ionicons name="settings-outline" size={24} color="#fff" />
-          </TouchableOpacity>
+  <TouchableOpacity onPress={() => navigation.navigate("Setting")}>
+    <Ionicons name="settings-outline" size={24} color="#fff" />
+  </TouchableOpacity>
 
-          <Text style={styles.title}>Wallets</Text>
+  <Text style={styles.title}>My Wallets</Text>
 
-          <TouchableOpacity>
-            <Ionicons name="ellipsis-vertical" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
+<TouchableOpacity onPress={loadWallets}>
+    <Ionicons name="refresh-outline" size={24} color="#fff" />
+  </TouchableOpacity>
 
-        {/* Balance */}
+</View>
+        {/* TOTAL BALANCE */}
         <View style={styles.balanceContainer}>
-          <Text style={styles.balance}>
-            {totalBalance.toFixed(2)}
-          </Text>
-          <Text style={styles.currency}> GLMT</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#fff" />
+          ) : (
+            <>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text style={styles.balance}>
+                  {showBalance
+                    ? animatedBalance.toFixed(6)
+                    : "******"}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowBalance(!showBalance)}
+                  style={{ marginLeft: 8 }}
+                >
+                  <Ionicons
+                    name={showBalance ? "eye-off" : "eye"}
+                    size={20}
+                    color="#fff"
+                  />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.currency}>GLMT</Text>
+            </>
+          )}
         </View>
 
-        {/* Hours */}
         <View style={styles.hoursPill}>
           <Text style={styles.hoursText}>
             {totalHours} GLMT Hours
@@ -85,94 +181,132 @@ console.log(wallets);
         </View>
       </LinearGradient>
 
-      {/* TABLE HEADER */}
-      <View style={styles.tableHeader}>
-        <Text style={styles.tableHeaderText}>Wallet</Text>
-        <Text style={styles.tableHeaderText}>Hours</Text>
-        <Text style={styles.tableHeaderText}>GLMT</Text>
-      </View>
+      {/* ACTION BUTTONS */}
+      <View style={styles.actionRow}>
+  <TouchableOpacity
+    style={styles.actionButton}
+    onPress={() => {
+      setWalletMode("new");
+      setWalletModalVisible(true);
+    }}
+  >
+    <Ionicons name="add-circle-outline" size={18} color="#6A5AE0" />
+    <Text style={styles.actionText}>Add Wallet</Text>
+  </TouchableOpacity>
 
-{/* WALLET LIST */}
-<View style={{ flex: 1 }}>
-  <FlatList
-    data={wallets}
-    keyExtractor={(item) => item.id}
-    contentContainerStyle={{ paddingBottom: 120 }}
-    renderItem={({ item }) => (
-      <TouchableOpacity
-        style={styles.walletRow}
-        onPress={() =>
-          navigation.navigate("WalletDetail", { wallet: item })
-        }
-      >
-        <Text style={styles.walletName}>{item.name}</Text>
-        <Text style={styles.walletValue}>{item.hours}</Text>
-
-        <View style={styles.walletRight}>
-          <Text style={styles.walletValue}>
-            {item.glmt.toFixed(2)}
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color="#999"
-            style={{ marginLeft: 5 }}
-          />
-        </View>
-      </TouchableOpacity>
-    )}
-    ListEmptyComponent={
-      <View style={{ alignItems: "center", marginTop: 40 }}>
-        <Text style={{ color: "#888" }}>
-          No wallets found
-        </Text>
-      </View>
-    }
-  />
+  <TouchableOpacity
+    style={styles.actionButton}
+    onPress={() => {
+      setWalletMode("load");
+      setWalletModalVisible(true);
+    }}
+  >
+    <Ionicons name="cloud-download-outline" size={18} color="#6A5AE0" />
+    <Text style={styles.actionText}>Load Wallet</Text>
+  </TouchableOpacity>
 </View>
+      {/* WALLET LIST */}
+      <FlatList
+        data={wallets}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={{ paddingBottom: 160 }}
+        refreshing={loading}
+        onRefresh={loadWallets}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.walletCard}
+            onPress={() =>
+              navigation.navigate("WalletDetail", {
+                wallet: item,
+              })
+            }
+          >
+            <View style={styles.cardLeft}>
+              <View style={styles.iconContainer}>
+                <Ionicons
+                  name="wallet-outline"
+                  size={18}
+                  color="#6A5AE0"
+                />
+              </View>
+              <View>
+                <Text style={styles.walletName}>{item.name}</Text>
+                <Text style={styles.walletHoursSmall}>
+                  {item.hours} Hours
+                </Text>
+              </View>
+            </View>
 
-      {/* BOTTOM ACTIONS */}
+            <View style={styles.cardRight}>
+              <Text style={styles.walletBalanceSmall}>
+                {item.glmt.toFixed(6)}
+              </Text>
+              <Text style={styles.walletCurrencySmall}>GLMT</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      />
+
+      {/* FLOATING BOTTOM BAR */}
       <View style={styles.bottomActions}>
-        <TouchableOpacity onPress={() => navigation.navigate("Receive")}>
-          <Ionicons name="wallet-outline" size={30} color="#333" />
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Receive")}
+        >
+          <Ionicons name="wallet-outline" size={26} color="#333" />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.sendButton}
-          onPress={() => navigation.navigate("CoinSend")}
+          onPress={() =>
+            navigation.navigate("CoinSend", {
+              wallets: wallets,
+            })
+          }
         >
           <LinearGradient
             colors={["#6A5AE0", "#4E5BD5"]}
             style={styles.sendGradient}
           >
-            <Feather name="send" size={28} color="#fff" />
+            <Feather name="send" size={26} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate("Swap")}>
-          <Ionicons name="swap-horizontal-outline" size={30} color="#ccc" />
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Swap")}
+        >
+          <Ionicons
+            name="swap-horizontal-outline"
+            size={26}
+            color="#333"
+          />
         </TouchableOpacity>
       </View>
+<WalletModal
+  visible={walletModalVisible}
+  mode={walletMode}
+  onClose={() => setWalletModalVisible(false)}
+  onSuccess={loadWallets}
+/>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F6FA",
-  },
+  container: { flex: 1, backgroundColor: "#F5F6FA" },
 
   header: {
     paddingTop:
       Platform.OS === "android"
-        ? StatusBar.currentHeight + 20
+        ? StatusBar.currentHeight + 30
         : 20,
     paddingBottom: 40,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+    overflow: "hidden",
   },
+
+  waveContainer: { position: "absolute", bottom: -20 },
 
   topBar: {
     flexDirection: "row",
@@ -184,111 +318,114 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "600",
+    textAlign: "center",
   },
 
-  balanceContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "flex-end",
-    marginTop: 30,
-  },
+  balanceContainer: { alignItems: "center", marginTop: 25 },
 
-  balance: {
-    fontSize: 38,
-    color: "#fff",
-    fontWeight: "700",
-  },
+  balance: { fontSize: 32, color: "#fff", fontWeight: "700" },
 
-  currency: {
-    fontSize: 18,
-    color: "#fff",
-    marginLeft: 5,
-    fontWeight: "500",
-  },
+  currency: { fontSize: 14, color: "#fff", marginTop: 4 },
 
   hoursPill: {
     alignSelf: "center",
-    marginTop: 10,
+    marginTop: 12,
     backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 15,
+    paddingHorizontal: 18,
     paddingVertical: 6,
     borderRadius: 20,
   },
 
-  hoursText: {
-    color: "#fff",
-    fontWeight: "500",
-  },
+  hoursText: { color: "#fff", fontSize: 12 },
 
-  tableHeader: {
+  actionRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: "#ECECF3",
-    marginTop: 10,
+    justifyContent: "space-around",
+    marginVertical: 15,
   },
 
-  tableHeaderText: {
-    fontWeight: "600",
-    color: "#555",
-    flex: 1,
-    textAlign: "center",
-  },
-
-  walletRow: {
+  actionButton: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: "#fff",
-    marginVertical: 6,
-    marginHorizontal: 12,
-    borderRadius: 14,
     alignItems: "center",
+    backgroundColor: "#fff",
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 20,
     elevation: 2,
   },
 
-  walletName: {
-    flex: 1,
-    fontWeight: "500",
-    color: "#333",
-    textAlign: "center",
+  actionText: {
+    marginLeft: 6,
+    color: "#6A5AE0",
+    fontWeight: "600",
   },
 
-  walletValue: {
-    flex: 1,
-    fontWeight: "500",
-    color: "#333",
-    textAlign: "center",
-  },
-
-  walletRight: {
+  walletCard: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    flex: 1,
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginVertical: 6,
+    padding: 14,
+    borderRadius: 14,
+    elevation: 2,
+  },
+
+  cardLeft: { flexDirection: "row", alignItems: "center" },
+
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(106,90,224,0.1)",
     justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+
+  walletName: { fontWeight: "600", color: "#333" },
+
+  walletHoursSmall: { fontSize: 12, color: "#888", marginTop: 2 },
+
+  cardRight: { alignItems: "flex-end" },
+
+  walletBalanceSmall: {
+    fontWeight: "700",
+    fontSize: 15,
+    color: "#111",
+  },
+
+  walletCurrencySmall: {
+    fontSize: 11,
+    color: "#888",
+    marginTop: 2,
   },
 
   bottomActions: {
     position: "absolute",
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: 45,
+    left: 25,
+    right: 25,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
+    backgroundColor: "#fff",
+    paddingVertical: 15,
+    borderRadius: 40,
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
   },
 
   sendButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
-    marginHorizontal: 20,
-    elevation: 5,
   },
 
   sendGradient: {
