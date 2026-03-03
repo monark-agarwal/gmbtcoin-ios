@@ -18,7 +18,7 @@ export default function ConfirmPin({ navigation, route }) {
       setPin(newPin);
       const storedPin = getPin();
       if (newPin.length === 4) {
-        if (newPin === newPin ) {
+        if (newPin === newPin) {
           navigation.replace('MainWallet');
         } else {
           Alert.alert('PIN mismatch');

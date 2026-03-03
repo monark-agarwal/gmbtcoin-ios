@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const NODE_URL = "http://coin5.glbrain.com:5220";
+const NODE_URL = "https://coin5.glbrain.com";
 
 export const getWalletBalance = async (addresses = []) => {
   try {

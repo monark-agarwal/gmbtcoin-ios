@@ -10,37 +10,47 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { saveNodeUrl, getNodeUrl} from '../utils/security';
+import { saveNodeUrl, getNodeUrl } from "../utils/security";
 
 import {
   APP_VERSION,
   BACKEND_MIN_VERSION,
   DB_VERSION,
   DEFAULT_NODE_URL,
-  NODE_URL_KEY,
 } from "../utils/GlobalConstants";
 
 export default function Setting() {
   const navigation = useNavigation();
-  const [nodeUrl, setNodeUrl] = useState(DEFAULT_NODE_URL);
+  const [nodeUrl, setNodeUrl] = useState("");
 
   useEffect(() => {
     loadNodeUrl();
   }, []);
 
   const loadNodeUrl = async () => {
-    const savedUrl = getNodeUrl();
-alert(savedUrl);
-    if (savedUrl) {
-      saveNodeUrl(nodeUrl);
+    try {
+      const savedUrl = await getNodeUrl();
+      if (savedUrl) {
+        setNodeUrl(savedUrl); // ? Correct
+      } else {
+        setNodeUrl(DEFAULT_NODE_URL);
+      }
+    } catch (error) {
+      console.log("Error loading node URL:", error);
+      setNodeUrl(DEFAULT_NODE_URL);
     }
   };
 
   const handleSave = async () => {
-    if (nodeUrl.trim().length > 0) {
-      saveNodeUrl(nodeUrl.trim());
+    try {
+      const trimmedUrl = nodeUrl.trim();
+      if (trimmedUrl.length > 0) {
+        await saveNodeUrl(trimmedUrl);
+      }
+      navigation.replace("MainWallet");
+    } catch (error) {
+      console.log("Error saving node URL:", error);
     }
-    navigation.replace("MainWallet");
   };
 
   const handleRestore = () => {
@@ -73,6 +83,7 @@ alert(savedUrl);
           value={nodeUrl}
           onChangeText={setNodeUrl}
           style={styles.input}
+          autoCapitalize="none"
         />
 
         <TouchableOpacity
