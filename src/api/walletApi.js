@@ -1,51 +1,115 @@
 import axios from "axios";
+import { getNodeUrl } from "../utils/security";
+import {
+  DEFAULT_NODE_URL,
+} from "../utils/GlobalConstants";
+/**
+ * Create axios instance dynamically
+ */
+const createApi = async () => {
+  const baseURL = await getNodeUrl();
+    // ✅ Fallback if null / undefined / empty string
+  if (!baseURL || baseURL.trim() === "") {
+    baseURL = DEFAULT_NODE_URL;
+  }
+  return axios.create({
+    baseURL,
+    timeout: 15000,
+  });
+};
 
-const NODE_URL = "https://coin5.glbrain.com";
-
-export const getWalletBalance = async (addresses = []) => {
+/**
+ * Wallet Balance
+ */
+export const getWalletBalance = async (addresses: string[] = []) => {
   try {
     if (!addresses.length) {
       return { coins: 0, hours: 0 };
     }
 
-    const addressString = addresses.join(",");
-console.log(`${NODE_URL}/api/v1/balance?addrs=${addressString}`);
-    const response = await axios.get(
-      `${NODE_URL}/api/v1/balance?addrs=${addressString}`
-    );
+    const api = await createApi();
 
-    const data = response.data;
+    const { data } = await api.get("/api/v1/balance", {
+      params: { addrs: addresses.join(",") },
+    });
 
     return {
-      coins: (data.confirmed?.coins || 0) / 1000000,
+      coins: (data.confirmed?.coins || 0) / 1_000_000,
       hours: data.confirmed?.hours || 0,
-      addresses: data.addresses || {}
+      addresses: data.addresses || {},
     };
-
   } catch (error) {
-    console.log("Balance API error:", error.message);
+    console.log("Balance API error:", error?.message);
     return { coins: 0, hours: 0 };
   }
 };
 
-export const getWalletHashes = async (addresses) => {
+/**
+ * Wallet Outputs (Hashes)
+ */
+export const getWalletHashes = async (addresses: string[]) => {
   try {
-    const response = await axios.get(
-      `${NODE_URL}/api/v1/outputs?addrs=${addresses}`
-    );
-    return response.data;
+    const api = await createApi();
+
+    const { data } = await api.get("/api/v1/outputs", {
+      params: { addrs: addresses.join(",") },
+    });
+
+    return data;
   } catch (error) {
     throw error;
   }
 };
 
-export const postTransaction = async (rawtx) => {
+/**
+ * Transaction History
+ */
+export const getTransactionHistory = async (addresses: string[]) => {
   try {
-    const response = await axios.post(
-      `${NODE_URL}/api/v1/injectTransaction`,
-      { rawtx }
+    const api = await createApi();
+
+    const { data } = await api.get("/api/v1/transactions", {
+      params: {
+        verbose: 1,
+        addrs: addresses.join(","),
+      },
+    });
+
+    return data;
+  } catch (error) {
+    console.log("Transaction error:", error?.message);
+    throw error;
+  }
+};
+
+/**
+ * CSRF Token
+ */
+export const getCSRFToken = async () => {
+  const api = await createApi();
+  const { data } = await api.get("/api/v1/csrf");
+  return data.csrf_token || data;
+};
+
+/**
+ * Inject Transaction
+ */
+export const postTransaction = async (rawtx: string) => {
+  try {
+    const api = await createApi();
+    const csrfToken = await getCSRFToken();
+
+    const { data } = await api.post(
+      "/api/v1/injectTransaction",
+      { rawtx },
+      {
+        headers: {
+          "X-CSRF-Token": csrfToken,
+        },
+      }
     );
-    return response.data;
+
+    return data;
   } catch (error) {
     throw error;
   }

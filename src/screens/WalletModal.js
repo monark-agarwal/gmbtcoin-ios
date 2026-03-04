@@ -130,12 +130,6 @@ export default function WalletModal({
                     </Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity
-                    onPress={() => Clipboard.setStringAsync(seed)}
-                  >
-                    <Text style={styles.link}>Copy</Text>
-                  </TouchableOpacity>
-
                   <TouchableOpacity onPress={generateSeed}>
                     <Text style={styles.link}>Refresh</Text>
                   </TouchableOpacity>

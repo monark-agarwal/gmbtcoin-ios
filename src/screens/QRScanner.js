@@ -33,19 +33,18 @@ export default function QRScanner() {
           barcodeTypes: ["qr"],
         }}
         onBarcodeScanned={
-          scanned
-            ? undefined
-            : ({ data }) => {
-                setScanned(true);
+  scanned
+    ? undefined
+    : ({ data }) => {
+        setScanned(true);
 
-                navigation.navigate({
-                  name: "CoinSend",
-                  params: { scannedAddress: data },
-                  merge: true, // ? THIS FIXES YOUR PROBLEM
-                });
-navigation.goBack();
-              }
-        }
+        navigation.goBack();
+
+setTimeout(() => {
+  navigation.setParams({ scannedAddress: data });
+}, 100);
+      }
+}
       />
 
       {scanned && (
