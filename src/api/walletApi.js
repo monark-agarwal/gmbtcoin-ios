@@ -52,7 +52,7 @@ export const getWalletHashes = async (addresses: string[]) => {
     const api = await createApi();
 
     const { data } = await api.get("/api/v1/outputs", {
-      params: { addrs: addresses.join(",") },
+      params: { addrs: addresses },
     });
 
     return data;
@@ -98,19 +98,23 @@ export const postTransaction = async (rawtx: string) => {
   try {
     const api = await createApi();
     const csrfToken = await getCSRFToken();
-
+console.log(csrfToken);
+console.log(rawtx);
+console.log(api);
     const { data } = await api.post(
-      "/api/v1/injectTransaction",
-      { rawtx },
-      {
-        headers: {
-          "X-CSRF-Token": csrfToken,
-        },
-      }
-    );
+  "/api/v1/injectTransaction",
+  JSON.stringify({ rawtx }),
+  {
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken,
+    },
+  }
+);
 
     return data;
   } catch (error) {
+	  console.log(error);
     throw error;
   }
 };

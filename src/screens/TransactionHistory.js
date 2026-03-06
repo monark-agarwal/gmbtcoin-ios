@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   Modal,
@@ -16,6 +15,7 @@ import {
   ToastAndroid,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { getTransactionHistory } from "../api/walletApi";
@@ -79,8 +79,8 @@ export default function TransactionHistory({ route, navigation }) {
             (s, o) => s + Number(o.coins || 0),
             0
           );
-		  
-		  const totalInput = inputs.reduce(
+
+          const totalInput = inputs.reduce(
             (s, o) => s + Number(o.coins || 0),
             0
           );
@@ -101,21 +101,23 @@ export default function TransactionHistory({ route, navigation }) {
             amount = myOutputTotal;
           } else if (myInputs.length > 0 && myOutputs.length > 0) {
             type = "internal";
-			const firstOwner = myInputs[0]?.owner;
 
-const matchedOutputs = myOutputs.filter(
-  (o) => o.dst === firstOwner
-);
+            const firstOwner = myInputs[0]?.owner;
 
-const total = matchedOutputs.reduce(
-  (sum, o) => sum + Number(o.coins || 0),
-  0
-);
-            amount =totalInput- total; // FIXED
+            const matchedOutputs = myOutputs.filter(
+              (o) => o.dst === firstOwner
+            );
+
+            const total = matchedOutputs.reduce(
+              (sum, o) => sum + Number(o.coins || 0),
+              0
+            );
+
+            amount = totalInput - total;
           }
 
           return {
-            id: `${tx.txid}-${index}`, // unique key FIX
+            id: `${tx.txid}-${index}`,
             txid: tx.txid,
             type,
             amount,
@@ -176,11 +178,7 @@ const total = matchedOutputs.reduce(
           showToast("Address copied");
         }}
       >
-        <Ionicons
-          name="copy-outline"
-          size={18}
-          color="#4f46e5"
-        />
+        <Ionicons name="copy-outline" size={18} color="#4f46e5" />
       </TouchableOpacity>
     </View>
   );
@@ -223,33 +221,36 @@ const total = matchedOutputs.reduce(
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#4f46e5" />
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <StatusBar barStyle="light-content" backgroundColor="#4f46e5" />
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color="#fff" />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Transaction History</Text>
+
         <TouchableOpacity onPress={loadTransactions}>
           <Ionicons name="refresh-outline" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={transactions}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-      />
+      <View style={styles.txContainer}>
+        {loading ? (
+          <View style={styles.loader}>
+            <ActivityIndicator size="large" color="#4f46e5" />
+          </View>
+        ) : (
+          <FlatList
+            data={transactions}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={{ paddingBottom: 120 }}
+          />
+        )}
+      </View>
 
       {/* Bottom Sheet */}
       <Modal visible={!!selectedTx} transparent animationType="fade">
@@ -263,9 +264,7 @@ const total = matchedOutputs.reduce(
 
             {selectedTx && (
               <ScrollView>
-                <Text style={styles.sheetTitle}>
-                  Transaction Details
-                </Text>
+                <Text style={styles.sheetTitle}>Transaction Details</Text>
 
                 <Text style={styles.label}>Amount</Text>
                 <Text style={styles.value}>
@@ -293,9 +292,7 @@ const total = matchedOutputs.reduce(
                 </Text>
 
                 <Text style={styles.label}>Transaction ID</Text>
-                <Text style={styles.txid}>
-                  {selectedTx.txid}
-                </Text>
+                <Text style={styles.txid}>{selectedTx.txid}</Text>
               </ScrollView>
             )}
           </Animated.View>
@@ -306,27 +303,22 @@ const total = matchedOutputs.reduce(
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F3F4F6" },
-  loader: { flex: 1, justifyContent: "center", alignItems: "center" },
+  safeArea: { flex: 1, backgroundColor: "#4f46e5" },
 
   header: {
     backgroundColor: "#4f46e5",
-    paddingTop:
-      Platform.OS === "android"
-        ? StatusBar.currentHeight + 10
-        : 50,
-    paddingBottom: 18,
     paddingHorizontal: 20,
+    paddingVertical: 14,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
 
-  headerTitle: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-  },
+  headerTitle: { color: "#fff", fontSize: 17, fontWeight: "700" },
+
+  txContainer: { flex: 1, backgroundColor: "#F3F4F6" },
+
+  loader: { marginTop: 40, alignItems: "center" },
 
   card: {
     flexDirection: "row",
@@ -334,10 +326,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     marginHorizontal: 14,
     marginVertical: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    padding: 14,
     borderRadius: 12,
-    elevation: 1,
   },
 
   iconBox: {
@@ -350,7 +340,21 @@ const styles = StyleSheet.create({
   },
 
   date: { fontSize: 13, color: "#374151" },
+
   amount: { fontSize: 14, fontWeight: "700" },
+
+  bottomBar: {
+    position: "absolute",
+    bottom: 35,
+    left: 25,
+    right: 25,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "#fff",
+    paddingVertical: 14,
+    borderRadius: 40,
+    elevation: 10,
+  },
 
   modalOverlay: {
     flex: 1,
@@ -375,35 +379,15 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
 
-  sheetTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
+  sheetTitle: { fontSize: 17, fontWeight: "700", marginBottom: 12 },
 
-  label: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginTop: 12,
-  },
+  label: { fontSize: 11, color: "#6B7280", marginTop: 12 },
 
-  value: {
-    fontSize: 17,
-    fontWeight: "700",
-    marginTop: 4,
-  },
+  value: { fontSize: 17, fontWeight: "700", marginTop: 4 },
 
-  valueSmall: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginTop: 4,
-  },
+  valueSmall: { fontSize: 13, fontWeight: "600", marginTop: 4 },
 
-  txid: {
-    fontSize: 11,
-    color: "#4f46e5",
-    marginTop: 6,
-  },
+  txid: { fontSize: 11, color: "#4f46e5", marginTop: 6 },
 
   addressRow: {
     flexDirection: "row",
@@ -411,13 +395,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  addressText: {
-    fontSize: 12,
-    color: "#374151",
-  },
+  addressText: { fontSize: 12, color: "#374151" },
 
-  myAddress: {
-    color: "#4f46e5",
-    fontWeight: "600",
-  },
+  myAddress: { color: "#4f46e5", fontWeight: "600" },
 });

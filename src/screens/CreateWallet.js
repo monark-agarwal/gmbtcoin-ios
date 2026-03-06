@@ -186,14 +186,6 @@ console.log(addressList);
                       {showSeed ? 'Hide' : 'Reveal'}
                     </Text>
                   </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.iconBtn}
-                    onPress={copySeed}
-                  >
-                    <Ionicons name="copy" size={20} color="#fff" />
-                    <Text style={styles.link}>Copy</Text>
-                  </TouchableOpacity>
                 </View>
               </>
             ) : (

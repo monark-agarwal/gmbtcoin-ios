@@ -6,15 +6,14 @@ import {
   FlatList,
   TouchableOpacity,
   Modal,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   Animated,
   Easing,
-  Platform,
   Dimensions,
   RefreshControl,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
@@ -26,7 +25,9 @@ import { getSeed } from "../storage/walletStorage";
 const { width } = Dimensions.get("window");
 
 export default function WalletDetails({ route, navigation }) {
+
   const { wallet } = route.params;
+  const insets = useSafeAreaInsets();
 
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -47,7 +48,6 @@ export default function WalletDetails({ route, navigation }) {
     loadBalances();
   }, []);
 
-  /* Wave Animation */
   useEffect(() => {
     Animated.loop(
       Animated.timing(waveAnim, {
@@ -81,15 +81,8 @@ export default function WalletDetails({ route, navigation }) {
         })
       );
 
-      const totalCoins = updatedAddresses.reduce(
-        (sum, a) => sum + a.coins,
-        0
-      );
-
-      const totalHrs = updatedAddresses.reduce(
-        (sum, a) => sum + a.hours,
-        0
-      );
+      const totalCoins = updatedAddresses.reduce((sum, a) => sum + a.coins, 0);
+      const totalHrs = updatedAddresses.reduce((sum, a) => sum + a.hours, 0);
 
       setAddresses(updatedAddresses);
       setTotalBalance(totalCoins);
@@ -105,6 +98,7 @@ export default function WalletDetails({ route, navigation }) {
       animatedTotal.addListener((v) => {
         setAnimatedBalance(v.value);
       });
+
     } catch (error) {
       console.log("Detail error:", error);
     } finally {
@@ -112,8 +106,7 @@ export default function WalletDetails({ route, navigation }) {
     }
   };
 
-  const truncate = (addr) =>
-    `${addr.slice(0, 6)}...${addr.slice(-6)}`;
+  const truncate = (addr) => `${addr.slice(0, 6)}...${addr.slice(-6)}`;
 
   const copyAddress = async (address) => {
     await Clipboard.setStringAsync(address);
@@ -133,14 +126,15 @@ export default function WalletDetails({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
       {/* HEADER */}
       <LinearGradient
         colors={["#6A5AE0", "#5B4BDB", "#4E5BD5"]}
-        style={styles.header}
+        style={[styles.header, { paddingTop: insets.top + 10 }]}
       >
+
         <Animated.View
           style={[
             styles.waveContainer,
@@ -149,9 +143,7 @@ export default function WalletDetails({ route, navigation }) {
         >
           <Svg height="140" width={width + 60}>
             <Path
-              d={`M0 80 Q ${width / 2} 140 ${width} 80 T ${
-                width + 60
-              } 80 L ${width + 60} 140 L 0 140 Z`}
+              d={`M0 80 Q ${width / 2} 140 ${width} 80 T ${width + 60} 80 L ${width + 60} 140 L 0 140 Z`}
               fill="rgba(255,255,255,0.08)"
             />
           </Svg>
@@ -159,119 +151,97 @@ export default function WalletDetails({ route, navigation }) {
 
         {/* TOP BAR */}
         <View style={styles.topBar}>
+
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color="#fff"/>
           </TouchableOpacity>
 
           <Text style={styles.title}>{wallet.name}</Text>
 
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity
-              onPress={handleShowSeed}
-              style={{ marginRight: 15 }}
-            >
-              <Ionicons name="eye-outline" size={22} color="#fff" />
-            </TouchableOpacity>
+          <TouchableOpacity onPress={loadBalances}>
+            <Ionicons name="refresh-outline" size={22} color="#fff"/>
+          </TouchableOpacity>
 
-            <TouchableOpacity onPress={loadBalances}>
-              <Ionicons name="refresh-outline" size={22} color="#fff" />
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* BALANCE */}
         <View style={styles.balanceContainer}>
+
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#fff"/>
           ) : (
             <>
-              <Text style={styles.balance}>
-                {animatedBalance.toFixed(6)}
-              </Text>
+              <Text style={styles.balance}>{animatedBalance.toFixed(6)}</Text>
               <Text style={styles.currency}>GLMT</Text>
             </>
           )}
+
         </View>
 
         <View style={styles.hoursPill}>
-          <Text style={styles.hoursText}>
-            {totalHours} GLMT Hours
-          </Text>
+          <Text style={styles.hoursText}>{totalHours} GLMT Hours</Text>
         </View>
+
+        {/* 👁 EYE BUTTON BOTTOM RIGHT */}
+        <TouchableOpacity
+          onPress={handleShowSeed}
+          style={styles.eyeButton}
+        >
+          <Ionicons name="eye-outline" size={24} color="#fff"/>
+        </TouchableOpacity>
+
       </LinearGradient>
 
       {/* ADDRESS LIST */}
+
       <FlatList
         data={addresses}
         keyExtractor={(item, index) => index.toString()}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading}
-            onRefresh={loadBalances}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadBalances} />}
         contentContainerStyle={{ paddingBottom: 30 }}
         renderItem={({ item }) => (
           <View style={styles.addressCard}>
+
             <View style={styles.left}>
               <View style={styles.iconBox}>
-                <Ionicons
-                  name="key-outline"
-                  size={18}
-                  color="#5B4BDB"
-                />
+                <Ionicons name="key-outline" size={18} color="#5B4BDB"/>
               </View>
 
               <View>
-                <Text style={styles.addressText}>
-                  {truncate(item.address.Address)}
-                </Text>
-                <Text style={styles.subText}>
-                  {item.hours} Hours
-                </Text>
+                <Text style={styles.addressText}>{truncate(item.address.Address)}</Text>
+                <Text style={styles.subText}>{item.hours} Hours</Text>
               </View>
             </View>
 
             <View style={styles.right}>
-              <Text style={styles.coinText}>
-                {item.coins.toFixed(6)}
-              </Text>
+              <Text style={styles.coinText}>{item.coins.toFixed(6)}</Text>
 
               <View style={styles.actions}>
-                <TouchableOpacity
-                  onPress={() =>
-                    copyAddress(item.address.Address)
-                  }
-                >
-                  <Ionicons
-                    name="copy-outline"
-                    size={20}
-                    color="#5B4BDB"
-                  />
+
+                <TouchableOpacity onPress={()=>copyAddress(item.address.Address)}>
+                  <Ionicons name="copy-outline" size={20} color="#5B4BDB"/>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() =>
-                    setSelectedAddress(item.address.Address)
-                  }
                   style={{ marginLeft: 12 }}
+                  onPress={()=>setSelectedAddress(item.address.Address)}
                 >
-                  <Ionicons
-                    name="qr-code-outline"
-                    size={22}
-                    color="#5B4BDB"
-                  />
+                  <Ionicons name="qr-code-outline" size={22} color="#5B4BDB"/>
                 </TouchableOpacity>
+
               </View>
             </View>
+
           </View>
         )}
       />
 
       {/* QR POPUP */}
+
       <Modal visible={!!selectedAddress} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
+
             <Text style={styles.modalTitle}>Receive GLMT</Text>
 
             {selectedAddress && (
@@ -279,55 +249,52 @@ export default function WalletDetails({ route, navigation }) {
                 <QRCode value={selectedAddress} size={200} />
 
                 <View style={styles.addressBox}>
+
                   <Text numberOfLines={1} style={{ flex: 1 }}>
                     {selectedAddress}
                   </Text>
 
-                  <TouchableOpacity
-                    onPress={() =>
-                      copyAddress(selectedAddress)
-                    }
-                  >
-                    <Ionicons name="copy-outline" size={22} />
+                  <TouchableOpacity onPress={()=>copyAddress(selectedAddress)}>
+                    <Ionicons name="copy-outline" size={22}/>
                   </TouchableOpacity>
+
                 </View>
               </>
             )}
 
             <TouchableOpacity
-              onPress={() => setSelectedAddress(null)}
+              onPress={()=>setSelectedAddress(null)}
               style={styles.closeBtn}
             >
               <Text style={styles.closeText}>Close</Text>
             </TouchableOpacity>
+
           </View>
         </View>
       </Modal>
 
       {/* SEED POPUP */}
+
       <Modal visible={seedModalVisible} transparent animationType="fade">
+
         <View style={styles.modalOverlay}>
+
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              Wallet Recovery Seed
-            </Text>
+
+            <Text style={styles.modalTitle}>Wallet Recovery Seed</Text>
 
             {seedLoading ? (
-              <ActivityIndicator size="large" color="#6A5AE0" />
+              <ActivityIndicator size="large" color="#6A5AE0"/>
             ) : (
-              <>
-                <View style={styles.seedBox}>
-                  <Text style={styles.seedText}>
-                    {seed || "Seed not available"}
-                  </Text>
-                </View>
-
-                
-              </>
+              <View style={styles.seedBox}>
+                <Text style={styles.seedText}>
+                  {seed || "Seed not available"}
+                </Text>
+              </View>
             )}
 
             <TouchableOpacity
-              onPress={() => {
+              onPress={()=>{
                 setSeedModalVisible(false);
                 setSeed(null);
               }}
@@ -335,124 +302,157 @@ export default function WalletDetails({ route, navigation }) {
             >
               <Text style={styles.closeText}>Close</Text>
             </TouchableOpacity>
+
           </View>
+
         </View>
+
       </Modal>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F6FA" },
-  header: {
-    paddingTop:
-      Platform.OS === "android"
-        ? StatusBar.currentHeight + 20
-        : 20,
-    paddingBottom: 60,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    overflow: "hidden",
+
+  container:{ flex:1, backgroundColor:"#F5F6FA" },
+
+  header:{
+    paddingBottom:60,
+    paddingHorizontal:20,
+    borderBottomLeftRadius:30,
+    borderBottomRightRadius:30,
+    overflow:"hidden",
   },
-  waveContainer: { position: "absolute", bottom: -20 },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+
+  waveContainer:{ position:"absolute", bottom:-20 },
+
+  topBar:{
+    flexDirection:"row",
+    justifyContent:"space-between",
+    alignItems:"center",
   },
-  title: { color: "#fff", fontSize: 18, fontWeight: "600" },
-  balanceContainer: { alignItems: "center", marginTop: 35 },
-  balance: { fontSize: 36, color: "#fff", fontWeight: "700" },
-  currency: { fontSize: 16, color: "#fff", marginTop: 5 },
-  hoursPill: {
-    alignSelf: "center",
-    marginTop: 15,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+
+  title:{ color:"#fff", fontSize:18, fontWeight:"600" },
+
+  balanceContainer:{ alignItems:"center", marginTop:35 },
+
+  balance:{ fontSize:36, color:"#fff", fontWeight:"700" },
+
+  currency:{ fontSize:16, color:"#fff", marginTop:5 },
+
+  hoursPill:{
+    alignSelf:"center",
+    marginTop:15,
+    backgroundColor:"rgba(255,255,255,0.2)",
+    paddingHorizontal:20,
+    paddingVertical:8,
+    borderRadius:20,
   },
-  hoursText: { color: "#fff" },
-  addressCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#F2F3F7",
-    marginHorizontal: 16,
-    marginVertical: 8,
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#E4E6EF",
+
+  hoursText:{ color:"#fff" },
+
+  eyeButton:{
+    position:"absolute",
+    bottom:15,
+    right:20,
   },
-  left: { flexDirection: "row", alignItems: "center" },
-  iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#E9E8FD",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
+
+  addressCard:{
+    flexDirection:"row",
+    justifyContent:"space-between",
+    alignItems:"center",
+    backgroundColor:"#F2F3F7",
+    marginHorizontal:16,
+    marginVertical:8,
+    padding:16,
+    borderRadius:18,
+    borderWidth:1,
+    borderColor:"#E4E6EF",
   },
-  addressText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1E1E2D",
+
+  left:{ flexDirection:"row", alignItems:"center" },
+
+  iconBox:{
+    width:40,
+    height:40,
+    borderRadius:12,
+    backgroundColor:"#E9E8FD",
+    justifyContent:"center",
+    alignItems:"center",
+    marginRight:12,
   },
-  subText: { fontSize: 12, color: "#8F90A6", marginTop: 4 },
-  right: { alignItems: "flex-end" },
-  coinText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#2C2C3A",
+
+  addressText:{
+    fontSize:14,
+    fontWeight:"600",
+    color:"#1E1E2D",
   },
-  actions: { flexDirection: "row", marginTop: 6 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+
+  subText:{ fontSize:12, color:"#8F90A6", marginTop:4 },
+
+  right:{ alignItems:"flex-end" },
+
+  coinText:{
+    fontSize:14,
+    fontWeight:"700",
+    color:"#2C2C3A",
   },
-  modalCard: {
-    width: "85%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 24,
-    alignItems: "center",
+
+  actions:{ flexDirection:"row", marginTop:6 },
+
+  modalOverlay:{
+    flex:1,
+    backgroundColor:"rgba(0,0,0,0.5)",
+    justifyContent:"center",
+    alignItems:"center",
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 20,
+
+  modalCard:{
+    width:"85%",
+    backgroundColor:"#fff",
+    borderRadius:20,
+    padding:24,
+    alignItems:"center",
   },
-  addressBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 20,
-    backgroundColor: "#F2F3F7",
-    padding: 10,
-    borderRadius: 10,
-    width: "100%",
+
+  modalTitle:{
+    fontSize:18,
+    fontWeight:"600",
+    marginBottom:20,
   },
-  seedBox: {
-    backgroundColor: "#F2F3F7",
-    padding: 15,
-    borderRadius: 12,
-    width: "100%",
+
+  addressBox:{
+    flexDirection:"row",
+    alignItems:"center",
+    marginTop:20,
+    backgroundColor:"#F2F3F7",
+    padding:10,
+    borderRadius:10,
+    width:"100%",
   },
-  seedText: {
-    fontSize: 14,
-    textAlign: "center",
-    color: "#1E1E2D",
+
+  seedBox:{
+    backgroundColor:"#F2F3F7",
+    padding:15,
+    borderRadius:12,
+    width:"100%",
   },
-  closeBtn: {
-    marginTop: 25,
-    backgroundColor: "#6A5AE0",
-    paddingHorizontal: 30,
-    paddingVertical: 10,
-    borderRadius: 25,
+
+  seedText:{
+    fontSize:14,
+    textAlign:"center",
+    color:"#1E1E2D",
   },
-  closeText: { color: "#fff", fontWeight: "600" },
+
+  closeBtn:{
+    marginTop:25,
+    backgroundColor:"#6A5AE0",
+    paddingHorizontal:30,
+    paddingVertical:10,
+    borderRadius:25,
+  },
+
+  closeText:{ color:"#fff", fontWeight:"600" }
+
 });

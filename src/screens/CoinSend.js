@@ -104,12 +104,13 @@ export default function CoinSend() {
       const numericAmount = parseFloat(amount);
       setLoading(true);
 
+
       const walletAddresses = selectedWallet.addresses
         .map((a) => a.address?.Address)
         .join(",");
 
       const outputs = await getWalletHashes(walletAddresses);
-
+ console.log(outputs);
       let remaining = numericAmount;
       let inputs = [];
       let totalInputHours = 0;
@@ -130,7 +131,7 @@ export default function CoinSend() {
           Secret: matchingAddress.address.Secret,
           Hash: item.hash,
         });
-
+console.log(matchingAddress);
         totalInputCoins += coins;
         totalInputHours += hours;
 
@@ -139,7 +140,7 @@ export default function CoinSend() {
 
       if (remaining > 0) throw new Error("Insufficient balance");
 
-      const burnHours = Math.floor(totalInputHours / 2);
+      const burnHours = Math.ceil(totalInputHours / 2);
       const remainingHours = totalInputHours - burnHours;
 
       const changeCoins = totalInputCoins - numericAmount;
@@ -161,7 +162,10 @@ export default function CoinSend() {
           Hours: senderHours,
         });
       }
-
+console.log(totalInputHours);
+console.log(burnHours);
+console.log(receiverHours);
+console.log(senderHours);
       setSummary({
         amount: numericAmount,
         burnHours,
@@ -184,7 +188,10 @@ export default function CoinSend() {
     setLoading(true);
 
     try {
+			  console.log(pendingTxData.inputs);
+	  console.log(pendingTxData.outputsArray);
       const rawtx = await GMBTModule.prepareTransaction(
+
         JSON.stringify(pendingTxData.inputs),
         JSON.stringify(pendingTxData.outputsArray)
       );
@@ -199,7 +206,14 @@ export default function CoinSend() {
       setLoading(false);
     }
   };
-
+const openScanner = () => {
+  navigation.navigate("QRScanner", {
+    onScan: (address) => {
+		const cleanAddress = address.replace("skycoin:", "");
+      setAddress(cleanAddress); // fills send address input
+    },
+  });
+};
   const closeSuccess = () => {
     setSuccessVisible(false);
     navigation.navigate("MainWallet", { refresh: true });
@@ -238,7 +252,7 @@ export default function CoinSend() {
           />
           <TouchableOpacity
             style={styles.qrButton}
-            onPress={() => navigation.navigate("QRScanner")}
+            onPress={openScanner}
           >
             <Ionicons name="qr-code-outline" size={22} color="#6A5AE0" />
           </TouchableOpacity>

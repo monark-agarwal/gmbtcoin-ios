@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Text, TouchableOpacity } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
 export default function QRScanner() {
   const navigation = useNavigation();
+  const route = useRoute();
+
+  const onScan = route.params?.onScan;
+
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
 
@@ -16,6 +20,7 @@ export default function QRScanner() {
     return (
       <View style={styles.center}>
         <Text>Camera permission required</Text>
+
         <TouchableOpacity onPress={requestPermission}>
           <Text style={{ color: "#6A5AE0", marginTop: 10 }}>
             Grant Permission
@@ -33,18 +38,18 @@ export default function QRScanner() {
           barcodeTypes: ["qr"],
         }}
         onBarcodeScanned={
-  scanned
-    ? undefined
-    : ({ data }) => {
-        setScanned(true);
+          scanned
+            ? undefined
+            : ({ data }) => {
+                setScanned(true);
 
-        navigation.goBack();
+                if (onScan) {
+                  onScan(data);
+                }
 
-setTimeout(() => {
-  navigation.setParams({ scannedAddress: data });
-}, 100);
-      }
-}
+                navigation.goBack();
+              }
+        }
       />
 
       {scanned && (

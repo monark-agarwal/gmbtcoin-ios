@@ -76,6 +76,7 @@ export default function Setting() {
             Backend node min version: {BACKEND_MIN_VERSION}
           </Text>
           <Text style={styles.info}>DB version: {DB_VERSION}</Text>
+		  <Text style={styles.info}>Coin Hour burn: 50%</Text>
         </View>
 
         <Text style={styles.label}>Node URL</Text>
