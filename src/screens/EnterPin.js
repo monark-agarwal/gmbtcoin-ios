@@ -85,9 +85,13 @@ export default function EnterPin({ navigation, route }) {
     }
 
     if (mode === "enter") {
-      navigation.replace("MainWallet");
-      return;
-    }
+  if (route.params?.onSuccess) {
+    route.params.onSuccess();
+    navigation.goBack();
+  } else {
+    navigation.replace("MainWallet");
+  }
+}
 
     if (mode === "pinchange") {
 

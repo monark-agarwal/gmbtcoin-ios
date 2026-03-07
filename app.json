@@ -1,43 +1,68 @@
 {
   "expo": {
-    "name": "GLMT Wallet",
+    "name": "GLMT Coin Wallet",
     "slug": "gmbt-coin-wallet",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "backgroundColor": "#4E5BD5"
+      }
+    },
+    "description": "Secure GLMT coin wallet",
+    "scheme": "glmtwallet",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#4E5BD5"
     },
+
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.monarkagarwal.gmbtcoinwallet",
+      "bundleIdentifier": "com.globra.gmbtcoinwallet",
+      "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Camera is used to scan QR codes for wallet addresses."
       }
     },
+
     "android": {
+      "package": "com.globra.gmbtcoinwallet",
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4E5BD5"
-      },
-      "edgeToEdgeEnabled": true,
-      "package": "com.monarkagarwal.gmbtcoinwallet",
-      "permissions": [
-        "android.permission.CAMERA"
-      ]
+      }
     },
+
     "web": {
       "favicon": "./assets/favicon.png"
     },
+
     "plugins": [
       "expo-secure-store",
       "expo-camera",
       "expo-font"
     ],
+
     "extra": {
       "eas": {
         "projectId": "a32303ac-9353-46b9-8735-d86a43643062"

@@ -112,18 +112,23 @@ export default function WalletDetails({ route, navigation }) {
     await Clipboard.setStringAsync(address);
   };
 
-  const handleShowSeed = async () => {
-    try {
-      setSeedLoading(true);
-      const storedSeed = await getSeed(wallet.id);
-      setSeed(storedSeed);
-      setSeedModalVisible(true);
-    } catch (error) {
-      console.log("Seed load error:", error);
-    } finally {
-      setSeedLoading(false);
-    }
-  };
+const handleShowSeed = () => {
+  navigation.navigate("EnterPin", {
+    mode: "enter",
+    onSuccess: async () => {
+      try {
+        setSeedLoading(true);
+        const storedSeed = await getSeed(wallet.id);
+        setSeed(storedSeed);
+        setSeedModalVisible(true);
+      } catch (error) {
+        console.log("Seed load error:", error);
+      } finally {
+        setSeedLoading(false);
+      }
+    },
+  });
+};
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>

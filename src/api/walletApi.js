@@ -7,7 +7,7 @@ import {
  * Create axios instance dynamically
  */
 const createApi = async () => {
-  const baseURL = await getNodeUrl();
+  var baseURL = await getNodeUrl();
     // ✅ Fallback if null / undefined / empty string
   if (!baseURL || baseURL.trim() === "") {
     baseURL = DEFAULT_NODE_URL;
@@ -98,9 +98,6 @@ export const postTransaction = async (rawtx: string) => {
   try {
     const api = await createApi();
     const csrfToken = await getCSRFToken();
-console.log(csrfToken);
-console.log(rawtx);
-console.log(api);
     const { data } = await api.post(
   "/api/v1/injectTransaction",
   JSON.stringify({ rawtx }),

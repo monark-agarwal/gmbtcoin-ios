@@ -4,6 +4,8 @@ import * as Font from "expo-font";
 import { MaterialIcons, Ionicons, Feather } from "@expo/vector-icons";
 import { View, ActivityIndicator } from "react-native";
 import Nav from "./src/navigation";
+import { Buffer } from 'buffer';
+global.Buffer = Buffer;
 
 export default function App() {
   const [loaded, setLoaded] = React.useState(false);
