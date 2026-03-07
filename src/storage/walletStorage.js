@@ -25,8 +25,7 @@ export const createWallet = async ({
   // 1️⃣ Save seed securely
   await SecureStore.setItemAsync(
     `wallet_seed_${walletId}`,
-    seedValue,
-    { requireAuthentication: true }
+    seedValue
   );
 
   // 2️⃣ Save metadata

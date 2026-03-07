@@ -1,15 +1,38 @@
-import 'react-native-get-random-values';
-import { Buffer } from 'buffer';
-global.Buffer = Buffer;
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import * as Font from "expo-font";
+import { MaterialIcons, Ionicons, Feather } from "@expo/vector-icons";
+import { View, ActivityIndicator } from "react-native";
+import Nav from "./src/navigation";
 
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import Nav from './src/navigation';
+export default function App() {
+  const [loaded, setLoaded] = React.useState(false);
 
-export default function App(){
-  return(
+  React.useEffect(() => {
+    async function loadFonts() {
+      await Font.loadAsync({
+        ...MaterialIcons.font,
+        ...Ionicons.font,
+        ...Feather.font,
+      });
+
+      setLoaded(true);
+    }
+
+    loadFonts();
+  }, []);
+
+  if (!loaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  return (
     <NavigationContainer>
-      <Nav/>
+      <Nav />
     </NavigationContainer>
   );
 }

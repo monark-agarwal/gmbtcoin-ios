@@ -62,7 +62,9 @@ export default function Setting() {
   };
 
   const handleChangePin = () => {
-    navigation.navigate("SetPin", { isChangePin: true });
+ 	navigation.navigate("EnterPin", {
+        mode: "pinchange"
+      });
   };
 
   return (
