@@ -60,8 +60,7 @@
     "plugins": [
       "expo-secure-store",
       "expo-camera",
-      "expo-font",
-      "expo-screen-capture"
+      "expo-font"
     ],
 
     "extra": {

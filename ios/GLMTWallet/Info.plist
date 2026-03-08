@@ -27,7 +27,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>com.monarkagarwal.gmbtcoinwallet</string>
+          <string>com.globra.gmbtcoinwallet</string>
         </array>
       </dict>
       <dict>
